@@ -1,4 +1,5 @@
 <script>
+
   let id = 0  
 
   export default{
@@ -7,13 +8,27 @@
     data(){
       return {
         newToDo : '',
-        todolist: [
-          {id: id++, text: 'Learn Vue', done: false},
-          {id: id++, text: 'Learn Vue1', done: false}
-        ],
+        todolist: [],
         helper: "",
         hideCompleted: false
       }
+    },
+
+    mounted(){
+      if (localStorage.getItem('todolist')){
+        this.todolist = JSON.parse(localStorage.getItem('todolist'));
+      }
+    }, 
+
+    watch: {
+      todolist: {
+        handler(new_list, old_list){
+          const parsed = JSON.stringify(new_list)
+          console.log('New list = ', parsed)
+          localStorage.setItem('todolist', parsed)
+        },
+        deep: true
+      },
     },
 
     methods: {
@@ -30,7 +45,11 @@
       
       removeToDo(todo){
         this.todolist = this.todolist.filter(task => task != todo);
-      }
+      },
+
+      clear(){
+        localStorage.setItem('todolist', JSON.stringify([]))
+      },
     },
 
     computed: {
@@ -46,6 +65,7 @@
 </script>
 
 <template>
+  
   <form @submit.prevent="addToDo">
     <input v-model="newToDo" placeholder="new toDo...">
     <button type> Add toDo</button>
@@ -63,9 +83,15 @@
       <button @click="removeToDo(todo)"> X </button>
     </li>
   </ul>
+
   <button @click="hideCompleted = !hideCompleted">
     {{hideCompleted ? "Show all" : "Hide completed"}}
   </button>
+
+  <button @click="clear">
+    Clear
+  </button>
+
 </template>
 
 <style>
