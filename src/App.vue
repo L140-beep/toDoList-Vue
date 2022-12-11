@@ -1,22 +1,39 @@
 <script>
+  
+  import { getTransitionRawChildren } from 'vue';
+import Header from './components/Header.vue'
 
-  let id = 0  
 
   export default{
     
+    components: {
+      Header
+    },
     
     data(){
       return {
+        change: false,
+        changedToDo: {},
+        id: 0,
         newToDo : '',
-        todolist: [],
+        todolist: [{id: 0, text: "Сделать проект на Laravel", done: false, topic : 'Web'},
+                   {id: 1, text: "Сделать проект на VueJS", done: true, topic : 'Web'},
+                   {id: 2, text: "Сделать проект на WordPress", done: false, topic : 'Web'},
+                   {id: 3, text: "Сходить в качалку", done: true, topic : 'Sport'},
+                  ],
         helper: "",
-        hideCompleted: false
+        hideCompleted: false,
+        sideBar: false,
+        topic: '',
       }
     },
 
     mounted(){
       if (localStorage.getItem('todolist')){
-        this.todolist = JSON.parse(localStorage.getItem('todolist'));
+          this.todolist = JSON.parse(localStorage.getItem('todolist'))
+      }
+      if (localStorage.getItem('id')){
+        this.id = JSON.parse(localStorage.getItem('id'));
       }
     }, 
 
@@ -29,17 +46,47 @@
         },
         deep: true
       },
+      id: {
+        handler(new_id, old_id){
+          const parsed = JSON.stringify(new_id)
+          console.log('New id = ', parsed)
+          localStorage.setItem('id', parsed)
+        },
+      }
     },
 
     methods: {
+
+      toChange(){
+        for (const todo in this.todolist){
+          if(this.todolist[todo].id == this.changedToDo.id){
+            console.log(this.todolist[todo].id)
+            this.todolist[todo].text = this.changedToDo.text
+            this.todolist[todo].topic = this.changedToDo.topic
+            this.changedToDo = {}
+            
+            break
+          }
+          
+          this.sideBar = false
+          this.change = false
+        }
+      },  
+
+      callSideBar(){
+        this.sideBar = true
+      },
+
       addToDo(){
+        this.change = false
         if (!this.newToDo){
           this.helper = "Empty string!"
         }
         else{
           this.helper = ""
-          this.todolist.push({id: id++, text: this.newToDo, done: false});
+          this.todolist.push({id: this.id++, text: this.newToDo, done: false, topic : this.topic});
           this.newToDo = '';
+          this.topic = '';
         }
       },
       
@@ -48,9 +95,19 @@
       },
 
       clear(){
-        localStorage.setItem('todolist', JSON.stringify([]))
+        this.todolist = []
+        // this.id = 0
+        localStorage.removeItem('todolist')
+        localStorage.removeItem('id')
       },
+      
+      changeToDo(todo){
+        this.change = true
+        Object.assign(this.changedToDo, todo)
+        this.callSideBar()
+      }
     },
+
 
     computed: {
       filtredToDos(){
@@ -65,41 +122,90 @@
 </script>
 
 <template>
-  
-  <form @submit.prevent="addToDo">
-    <input v-model="newToDo" placeholder="new toDo...">
-    <button type> Add toDo</button>
-    
-    <div v-if="helper">
-      {{helper}}
+    <Header />
+
+    <div class="form">
+      <ul>
+        <li v-for="todo in filtredToDos">
+          <div class="task" :class="{done : todo.done}" @click="changeToDo(todo)">
+            <input @click="" type="checkbox" v-model="todo.done">
+            <span :class="{done : todo.done}">{{todo.text}} 
+              <span v-if="todo.topic" class="topic"> #{{todo.topic}}</span>
+            </span>
+            <div class="btn-container" @click="removeToDo(todo)">
+              <div class="btn-remove"></div>
+            </div>
+          </div>
+        </li>
+      </ul>
+      <div>
+        <button class="add" @click="callSideBar(); change=false"> Add </button>
+        <button class="add hideCompleted" @click="hideCompleted = !hideCompleted">{{hideCompleted ? 'Show all' : 'Hide completed'}}</button>
+        <button class="add hideCompleted clear" @click="clear">Clear</button>
+      </div>
     </div>
 
-  </form>
+    
+    <div class="sideBar" :class="{visible : sideBar}">
+      <div class="btn-container sideBarClose" @click="sideBar = false; change=false">
+          <div class="btn-remove"></div>
+      </div>
 
-   <ul>
-    <li v-for="todo in filtredToDos">
-      <input type="checkbox" v-model="todo.done">
-      <span :class="{done : todo.done}">{{todo.text}} </span>
-      <button @click="removeToDo(todo)"> X </button>
-    </li>
-  </ul>
+      <form v-if="!change" @submit.prevent="addToDo" class="addForm">
+        <input v-model="newToDo" placeholder="new toDo..."  class="addInput">
+        <br>
+        <br>
+        <input v-model="topic" placeholder="topic..."  class="addInput">
+        <div v-if="helper">
+          {{helper}}
+        </div>
+        <button type="submit" @click="sideBar = false" class="submit-btn">Submit</button>
+      </form>
 
-  <button @click="hideCompleted = !hideCompleted">
-    {{hideCompleted ? "Show all" : "Hide completed"}}
-  </button>
-
-  <button @click="clear">
-    Clear
-  </button>
-
+      <form v-else @submit.prevent="toChange" class="addForm">
+        <input v-model="changedToDo.text" class="addInput">
+        <br>
+        <br>
+        <input v-model="changedToDo.topic" placeholder="topic..."  class="addInput">
+        <div v-if="helper">
+          {{helper}}
+        </div>
+        <button type="submit" class="submit-btn">Submit</button>
+      </form>
+    </div>
 </template>
 
 <style>
-  .title{
-    color: red;
-  }
 
-  .done{
-    text-decoration: line-through;
-  }
+.sideBarClose{
+  top: 20px;
+}
+
+.sideBar{
+  display: none;
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 20%;
+  height: 90vh;
+  background-color: #e3f3ff;
+  z-index: 100;
+  align-items: center;
+}
+
+.visible {
+  display: inline-block;
+  transition: 0.1s all;
+}
+
+.hideCompleted {
+  width: 35%;
+  background-color: rgb(159, 155, 155);
+}
+
+.clear {
+  background-color: #df5252;
+}
+
+
 </style>
